@@ -20,6 +20,14 @@ app.get('/', function(req, res) {
 
 app.post('/api/shorturl', function(req, res) {
   const originalUrl = req.body.url;
+
+  // Validação simples de URL
+  const urlPattern = /^(http|https):\/\/[^ "]+$/;
+
+  if (!urlPattern.test(originalUrl)) {
+    return res.json({ error: 'invalid url' });
+  }
+
   const shortUrl = Math.random().toString(36).substring(2, 8);
 
   urlDatabase[shortUrl] = originalUrl;
@@ -29,6 +37,7 @@ app.post('/api/shorturl', function(req, res) {
     short_url: shortUrl
   });
 });
+
 
 app.get('/api/shorturl/:id', function(req, res) {
   const shortId = req.params.id;
