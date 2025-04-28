@@ -1,10 +1,13 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const dns = require('dns');
+const { URL } = require('url');
 const app = express();
 
-// Banco de dados simples
+// Banco de dados em memória
 const urlDatabase = {};
+let urlCounter = 1; // Inicia contador em 1
 
 // Configurações básicas
 const port = process.env.PORT || 3000;
@@ -18,30 +21,37 @@ app.get('/', function(req, res) {
   res.sendFile(process.cwd() + '/views/index.html');
 });
 
+// Rota POST para criar short url
 app.post('/api/shorturl', function(req, res) {
   const originalUrl = req.body.url;
 
-  // Validação simples de URL
-  const urlPattern = /^(http|https):\/\/[^ "]+$/;
-
-  if (!urlPattern.test(originalUrl)) {
+  let hostname;
+  try {
+    hostname = new URL(originalUrl).hostname;
+  } catch (error) {
     return res.json({ error: 'invalid url' });
   }
 
-  const shortUrl = Math.random().toString(36).substring(2, 8);
+  dns.lookup(hostname, (err, address) => {
+    if (err) {
+      return res.json({ error: 'invalid url' });
+    } else {
+      const shortUrl = urlCounter++;
 
-  urlDatabase[shortUrl] = originalUrl;
+      urlDatabase[shortUrl] = originalUrl;
 
-  res.json({
-    original_url: originalUrl,
-    short_url: shortUrl
+      res.json({
+        original_url: originalUrl,
+        short_url: shortUrl
+      });
+    }
   });
 });
 
-
-app.get('/api/shorturl/:id', function(req, res) {
-  const shortId = req.params.id;
-  const originalUrl = urlDatabase[shortId];
+// Rota GET para redirecionar
+app.get('/api/shorturl/:short_url', function(req, res) {
+  const shortUrl = req.params.short_url;
+  const originalUrl = urlDatabase[shortUrl];
 
   if (originalUrl) {
     res.redirect(originalUrl);
@@ -50,6 +60,7 @@ app.get('/api/shorturl/:id', function(req, res) {
   }
 });
 
+// API Hello (opcional)
 app.get('/api/hello', function(req, res) {
   res.json({ greeting: 'hello API' });
 });
